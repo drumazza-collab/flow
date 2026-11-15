@@ -1,5 +1,5 @@
 // Flow Mobility: cache per l'uso offline. Cambia VERSION a ogni aggiornamento dell'app.
-const VERSION = 'flow-v1';
+const VERSION = 'flow-v2';
 const CORE = ['./', 'index.html', 'manifest.webmanifest', 'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {

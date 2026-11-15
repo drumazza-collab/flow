@@ -183,6 +183,24 @@ nav.tabs button[aria-current="page"]{color:var(--accent)}
 .done{flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px;text-align:center}
 .done h2{font-size:1.8rem}
 .done .big{font-family:var(--f-display);font-size:3rem;color:var(--accent);font-variant-numeric:tabular-nums}
+/* two frames and own photos */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.slot{display:flex;flex-direction:column;gap:6px;min-width:0}
+.frame{aspect-ratio:200/150;max-width:100%;background:var(--surface-2);border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:4px}
+.frame img{width:100%;height:100%;object-fit:cover;border-radius:9px;display:block}
+.slot-foot{display:flex;flex-direction:column;gap:4px}
+.cap{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.ph-row{display:flex;gap:10px;flex-wrap:wrap}
+.ph-btn,.ph-del{font-size:.8rem;font-weight:700;color:var(--dusk);cursor:pointer;background:none;border:0;padding:0}
+.ph-del{color:var(--muted)}
+.ph-msg{font-size:.8rem;color:var(--warn)}
+.libnote{background:var(--surface);border-radius:14px;padding:12px 14px;font-size:.86rem;color:var(--muted)}
+.libnote b{color:var(--ink)}
+.phs{position:relative;aspect-ratio:200/150;max-width:100%;border-radius:10px;overflow:hidden}
+.phs img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.phs img.alt{animation:phx 6s ease-in-out infinite}
+@keyframes phx{0%,40%{opacity:0}50%,90%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.phs img.alt{animation:none;opacity:0}}
 /* figure */
 .fig{display:block;width:100%;height:auto}
 .fig .near,.fig .far,.fig .tor{fill:none;stroke-linecap:round;stroke-linejoin:round}
@@ -307,6 +325,8 @@ const EX = {}; EX_RAW.forEach(([id,n,a,s,b,how,tip])=>EX[id]={id,n,a,s,b,how,tip
 
 /* ---------- Routine ---------- */
 const ROUTINES = [
+ {id:'totalbody',name:'Total body quotidiana',tone:'var(--accent)',desc:'Mantenimento e performance: colonna, anche, caviglie, spalle e core in un unico flusso da fare ogni giorno.',
+  list:[['gatto',1],['world',1],['cerchi_anca',2],['caviglia_muro',1],['squat_lento',1],['pass_through',2],['libro',2],['cossack',3],['flessori',1],['scap_push',3],['dead_bug',2],['ponte',3],['inchworm',3],['ischio',3],['bambino',1]]},
  {id:'prewod',name:'Pre WOD',tone:'var(--accent)',desc:'Attivazione dinamica di spalle, anche, caviglie e colonna toracica prima del box.',
   list:[['cerchi_braccia',1],['gatto',1],['slanci',2],['world',1],['caviglia_muro',1],['cerchi_anca',3],['pass_through',1],['scap_push',2],['libro',2],['cossack',3],['squat_lento',1],['inchworm',3]]},
  {id:'postwod',name:'Post WOD',tone:'var(--dusk)',desc:'Defaticamento per tornare calmo dopo il WOD: dorsali, anche e catena posteriore.',
@@ -433,7 +453,7 @@ const figSVG=(id,k)=>`<svg viewBox="0 -20 200 150" class="fig" aria-hidden="true
 const RM=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 const ANIM=new Map();let animOn=false;
 function animate(el,id){
-  if(!el)return;el.innerHTML=figSVG(id,0);if(RM||!FIG[id])return;
+  if(!el)return;delete el.dataset.stop;el.innerHTML=figSVG(id,0);if(RM||!FIG[id])return;
   ANIM.set(el,{id,t0:performance.now()});if(!animOn){animOn=true;requestAnimationFrame(animLoop)}
 }
 function animLoop(now){
@@ -443,6 +463,39 @@ function animLoop(now){
     const svg=el.firstElementChild;if(svg)svg.innerHTML=figInner(a.id,k);
   });
   if(ANIM.size)requestAnimationFrame(animLoop);else animOn=false;
+}
+
+/* ---------- Foto personali (IndexedDB, solo su questo dispositivo) ---------- */
+let _db=null;
+function dbOpen(){return new Promise((res,rej)=>{if(_db)return res(_db);if(!window.indexedDB)return rej(new Error('no idb'));
+  const r=indexedDB.open('flow-photos',1);r.onupgradeneeded=()=>r.result.createObjectStore('photos');r.onsuccess=()=>{_db=r.result;res(_db)};r.onerror=()=>rej(r.error)})}
+async function dbReq(mode,fn){const db=await dbOpen();return new Promise((res,rej)=>{const tx=db.transaction('photos',mode);const q=fn(tx.objectStore('photos'));
+  tx.oncomplete=()=>res(q&&q.result);tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})}
+const phURL=new Map();
+async function getPh(k){if(phURL.has(k))return phURL.get(k);let b=null;try{b=await dbReq('readonly',st=>st.get(k))}catch(e){}
+  const u=b?URL.createObjectURL(b):null;phURL.set(k,u);return u}
+function shrink(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file),im=new Image();
+  im.onload=()=>{const sc=Math.min(1,1100/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*sc);c.height=Math.round(im.height*sc);
+    c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob(b=>b?res(b):rej(new Error('img')),'image/jpeg',0.82)};
+  im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('img'))};im.src=u})}
+async function setPh(k,file){const blob=await shrink(file);await dbReq('readwrite',st=>st.put(blob,k));const o=phURL.get(k);if(o)URL.revokeObjectURL(o);phURL.set(k,URL.createObjectURL(blob))}
+async function delPh(k){try{await dbReq('readwrite',st=>st.delete(k))}catch(e){}const o=phURL.get(k);if(o)URL.revokeObjectURL(o);phURL.set(k,null)}
+const CAP=['Partenza','Posizione finale'];
+const slotHTML=(id,i)=>`<div class="slot" data-id="${id}" data-i="${i}"><div class="frame">${figSVG(id,i)}</div><div class="slot-foot"><span class="cap">${CAP[i]}</span>
+  <div class="ph-row"><label class="ph-btn"><span>Aggiungi foto</span><input type="file" accept="image/*" hidden></label><button type="button" class="ph-del" hidden>Rimuovi</button></div><span class="ph-msg" hidden></span></div></div>`;
+async function fillSlot(slot){const id=slot.dataset.id,i=+slot.dataset.i,u=await getPh(id+':'+i);
+  slot.querySelector('.frame').innerHTML=u?`<img src="${u}" alt="${CAP[i]}: ${esc(EX[id].n)}">`:figSVG(id,i);
+  slot.querySelector('.ph-del').hidden=!u;slot.querySelector('.ph-btn span').textContent=u?'Cambia foto':'Aggiungi foto'}
+function bindSlots(root){root.querySelectorAll('.slot').forEach(slot=>{if(slot.dataset.b)return;slot.dataset.b='1';
+  const k=slot.dataset.id+':'+slot.dataset.i,inp=slot.querySelector('input'),msg=slot.querySelector('.ph-msg');
+  inp.onchange=async()=>{const f=inp.files&&inp.files[0];inp.value='';if(!f)return;msg.hidden=true;
+    try{await setPh(k,f)}catch(e){msg.textContent='Non riesco a salvare la foto su questo telefono.';msg.hidden=false}fillSlot(slot)};
+  slot.querySelector('.ph-del').onclick=async()=>{await delPh(k);fillSlot(slot)};fillSlot(slot)})}
+async function showStageMedia(id){
+  const fb=$('#pFig');animate(fb,id);
+  const [a,b]=await Promise.all([getPh(id+':0'),getPh(id+':1')]);
+  if(!(a||b)||fb.dataset.cur!==id)return;
+  fb.dataset.stop='1';fb.innerHTML=`<div class="phs">${a?`<img src="${a}" alt="">`:''}${b?`<img class="${a?'alt':''}" src="${b}" alt="">`:''}</div>`;
 }
 
 /* ---------- Stato ---------- */
@@ -588,11 +641,12 @@ function renderLibrary(){
   const areas=['tutte',...Object.keys(AREAS)];
   const list=EX_RAW.map(r=>EX[r[0]]).filter(e=>S.area==='tutte'||e.a===S.area);
   $('#view').innerHTML=`<div style="display:flex;flex-direction:column;gap:14px">
+    <p class="libnote">Ogni esercizio ha due immagini, <b>partenza</b> e <b>posizione finale</b>. Puoi sostituirle con <b>le tue foto</b>: restano salvate solo su questo telefono e le vedrai anche durante la sessione.</p>
     <div class="filters">${areas.map(a=>`<button data-area="${a}" aria-pressed="${S.area===a}">${a==='tutte'?'Tutti':AREAS[a]}</button>`).join('')}</div>
     <div class="list">${list.map(e=>`<details class="ex" data-ex="${e.id}"><summary><span class="thumb">${figSVG(e.id,0)}</span><span class="n">${e.n}</span><span class="m">${e.s} s${e.b?' per lato':''}</span></summary>
-      <div class="body"><div class="figbox"></div><span class="chip" style="align-self:flex-start">${AREAS[e.a]}</span><p>${e.how}</p><p class="tip">${e.tip}</p>${vidLink(e.id)}</div></details>`).join('')}</div></div>`;
+      <div class="body"><div class="duo">${slotHTML(e.id,0)}${slotHTML(e.id,1)}</div><span class="chip" style="align-self:flex-start">${AREAS[e.a]}</span><p>${e.how}</p><p class="tip">${e.tip}</p>${vidLink(e.id)}</div></details>`).join('')}</div></div>`;
   $('#view').querySelectorAll('[data-area]').forEach(b=>b.onclick=()=>{S.area=b.dataset.area;renderLibrary()});
-  $('#view').querySelectorAll('details.ex').forEach(d=>d.ontoggle=()=>{const fb=d.querySelector('.figbox');if(d.open){delete fb.dataset.stop;animate(fb,d.dataset.ex)}else fb.dataset.stop='1'});
+  $('#view').querySelectorAll('details.ex').forEach(d=>d.ontoggle=()=>{if(d.open)bindSlots(d)});
 }
 function renderHistory(){
   $('#sub').textContent='I tuoi progressi';
@@ -753,7 +807,7 @@ function enterStep(i){
   $('#pRing').classList.toggle('prep',st.type==='prep');
   $('#pUnit').textContent=st.type==='prep'?'si parte tra':'secondi';
   $('#pHow').textContent=ex.how;$('#pTip').textContent=ex.tip;$('#pVid').href=vidURL(st.ex);
-  if($('#pFig').dataset.cur!==st.ex){$('#pFig').dataset.cur=st.ex;animate($('#pFig'),st.ex)}
+  if($('#pFig').dataset.cur!==st.ex){$('#pFig').dataset.cur=st.ex;showStageMedia(st.ex)}
   $('#pNext').innerHTML=nextW&&st.type==='work'?`Dopo: <b>${EX[nextW.ex].n}</b>${nextW.side&&nextW.ex===st.ex?' · '+sideTxt(nextW.side).toLowerCase():''}`:(st.type==='prep'&&st.side?sideTxt(st.side):'');
   if(st.type==='prep')speak(st.sw?'Cambia lato':(i===0?'Iniziamo. ':'Prossimo: ')+ex.n+(st.side?', '+sideTxt(st.side).toLowerCase():''));
   else chime();

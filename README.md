@@ -2,8 +2,9 @@
 
 App personale di mobility e stretching, installabile su iPhone dalla schermata Home.
 
-- 8 routine da 5, 10 o 15 minuti: Pre WOD, Post WOD, Sci e snowboard, Kitesurf, Mobilità caviglie, Pubalgia, Recupero serale, Con Federico
-- 55 esercizi con istruzioni, figura animata e link a un video
+- 9 routine da 5, 10 o 15 minuti: Total body quotidiana, Pre WOD, Post WOD, Sci e snowboard, Kitesurf, Mobilità caviglie, Pubalgia, Recupero serale, Con Federico
+- 55 esercizi con istruzioni, figura animata, immagini di partenza e posizione finale, link a un video
+- Possibilità di sostituire le immagini con le proprie foto, salvate solo sul telefono
 - Timer guidato con bip, voce in italiano e musica soft opzionale
 - Storico con giorni consecutivi e calendario
 - Funziona anche offline
